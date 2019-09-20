@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <title>Spark - API Documentation</title>
+        <link rel="stylesheet" type="text/css" href="/css/default.css"/>
+        <link rel="icon" href="/icon.ico" type="x-image/icon"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js" type="text/javascript"></script>
+        <meta charset="utf8"/>
+    </head>
+    <body>
+        <main>
+            <h1 class="center-align"><img src="/logo.png" width="200px" height="auto" alt="Spark logo"/></h1>
+            <h3 class="center-align">Spark API Documentation</h3>
+
+            <p>The Spark API is public and free to use. Public user data is available for free and able to be accessed without needing to sign up for a Spark account. However, private data requires you create a Spark account in order to get your API key.</p>
+            <p>Do <b>NOT</b> share your API key with anyone else, as it identifies who you are in Spark.</p>
+            <p>All methods are <code>GET</code> unless stated otherwise.</p>
+
+            <hr/>
+
+            <h1>Public API</h1>
+            <p>Endpoint: <code>https://sparkapp-backend.herokuapp.com/api</code></p>
+
+            <h3>User Data</h3>
+            <p>Endpoint: <code>https://sparkapp-backend.herokuapp.com/api/user/USERNAME</code></p>
+            <p>For users <a href="https://www.sparkapp.tk/help/visibility.html">who have allowed themselves to be exposed to the public API</a>, basic info about them is easy to come by. Here's what a successful response looks like:</p>
+
+            <div class="full">
+                {<br/>
+                    "username": "smartie",<br/>
+                    "email": "smarti3plays@gmail.com",<br/>
+                    "display": "Nati",<br/>
+                    "avatar": "https://cdn.glitch.com/e37e70e9-8f05-473e-a44e-4e72d168cd47%2Flogo.png",<br/>
+                    "verified": "true",<br/>
+                    "public": "true"<br/>
+                }
+            </div>
+
+            <p>Everything here is pretty much self-explanatory. Except for <code>verified</code>, so let's explain what that means. It's actually simple: whether or not the user's email has been verified.</p>
+
+            <h3>Room Data</h3>
+            <p>Endpoint: <code>https://sparkapp-backend.herokuapp.com/api/room/ROOM_ID</code></p>
+            <p>For rooms that do not require a password, info about them is publicly accesible as well. Here's what a successful response looks like:</p>
+
+            <div class="full">
+                    {<br/>
+                        "room": {<br/>
+                            "name": "Nati's Room",<br/>
+                            "id": "nati",<br/>
+                            "admin": {<br/>
+                                "owner": "smartie",<br/>
+                                "admins": [<br/>
+                                "trusted-user1",<br/>
+                                "trusted-user2"<br/>
+                                ],<br/>
+                                "public": true<br/>
+                                }
+                                }
+                    }<br/>
+            </div>
+
+            <p>Clearly, this has a different formatting than a user response. And it has more types than those, too. <code>admins</code> comes in as an array, how could that not be confusing? Once you start to use the API more, this'll become common, and easy.</p>
+            <p>If you are looking for your room ID, you can find it in the room list.</p>
+
+            <hr/>
+
+            <h1>Private API</h1>
+            <p>Endpoint: <code>https://sparkapp-backend.herokuapp.com/api/private</code></p>
+            <p>REQUIRED HEADERS: <code>Authorization: YOUR_API_KEY</code></p>
+
+            <p>So. The private API. Let's talk about that. Cause I hated making it. But it's useful.</p>
+
+            <h3>User Data</h3>
+            <p>Endpoint: <code>https://sparkapp-backend.herokuapp.com/api/private/me</code></p>
+            <p>REQUIRED HEADERS: <code>Authorization: YOUR_API_KEY</code></p>
+            <p>This endpoint allows you to get info about yourself. Fun! It outputs more than the regular user endpoint. So let's look at a response.</p>
+
+            <div class="full">
+                    {<br/>
+                        "username": "smartie",<br/>
+                        "password": "YOUR HASHED PASSWORD",<br/>
+                        "email": "smarti3plays@gmail.com",<br/>
+                        "display": "Nati",<br/>
+                        "avatar": "https://cdn.glitch.com/e37e70e9-8f05-473e-a44e-4e72d168cd47%2Flogo.png",<br/>
+                        "verifyId": "EMAIL VERIFICATION ID",<br/>
+                        "verified": "true",<br/>
+                        "apiKey": "YOUR API KEY",<br/>
+                        "public": "true"<br/>
+                    }
+            </div>
+
+            <p>As you can see, this outputs everything about you. And reasonably so. Only you are allowed to have your API key. And the API identifies you by your API key.</p>
+
+            <h3>Room Data</h3>
+            <p>Endpoint: <code>https://sparkapp-backend.herokuapp.com/api/private/room/ROOM_ID</code></p>
+            <p>REQUIRED HEADERS: <code>Authorization: YOUR_API_KEY, Room-Password: ROOM_PASSWORD</code></p>
+
+            <p>This endpoint allows you to view rooms that are locked behind a password, if you know the password to them. You can also view unlocked rooms like this, but why would you?</p>
+
+            <p>The response is the same as the Public API. So let's just move on.</p>
+
+            <h3>Updating User Info</h3>
+            <p>Endpoint: <code>PUT https://sparkapp-backend.herokuapp.com/api/private/me/INFO</code></p>
+            <p>REQUIRED HEADERS: <code>Authorization: YOUR_API_KEY</code></p>
+
+            <p>This endpoint will update information on you. For now, you're only allowed to do <code>/me/display</code> and <code>/me/avatar</code>, but more may be added in the future.</p>
+
+            <p>No data is returned in response, except for status codes and the usual "Success" or "Bad Request". You'll know it worked if you got a <code>200 OK</code> response.</p>
+
+            <h3>Adding &amp; Deleting Room Admins</h3>
+            <p>Endpoint: <code>POST/DELETE https://sparkapp-backend.herokuapp.com/api/private/room/ROOM_ID/admins?username=ADMIN_USERNAME</code></p>
+            <p>REQUIRED HEADERS: <code>Authorization: YOUR_API_KEY</code></p>
+
+            <p>To add an admin, use <code>POST</code>. To remove an admin, use <code>DELETE</code>. Only the owner may remove admins.</p>
+
+            <p>No data is returned in response, except for status codes and the usual "Success" or "Bad Request". You'll know it worked if you got a <code>200 OK</code> response.</p>
+
+            <hr/>
+
+            <h1>Socket.IO</h1>
+
+            <p>We're not done yet. Spark uses <a href="https://socket.io/" target="_blank">Socket.IO</a> for chat messaging and music controlling. When connecting to the socket, you must pass your API key in a query to the socket. Here's an example:</p>
+
+            <div class="full">
+                    const socket = io('ws://sparkapp-backend.herokuapp.com/', { query:'apiKey=YOUR_API_KEY' })</div>
+
+            <p>If you do not pass an API key, or you pass an incorrect API key, the server will forcibly disconnect you right away with no warning. Admittedly, this isn't the best course of action. But you may emit a <code>test connection</code> event, and wait for a <code>status</code> event back. Actually, you should always listen for a <code>status</code> event - it's extremely important.</p>
+
+            <h3>Events</h3>
+
+            <p>The Spark Socket (heh, get it?) has 11 different types of events:</p>
+
+            <ul>
+                <li><code>status</code> - General event with important information (listen)</li>
+                <li><code>join room</code> - Emit this to join a room (Requires authorization on locked rooms, more on that later)</li>
+                <li><code>leave room</code> - Emit this to leave a room</li>
+                <li><code>chat text</code> - Emit this to send a message, listen for it to receive a message</li>
+                <li><code>add to queue</code> - Emit this to add a song to the queue</li>
+                <li><code>queue song</code> - Listen for this to add a song to the queue</li>
+                <li><code>user ready</code> - Emitted when a user's page and assets have fully loaded</li>
+                <li><code>skip request</code> - Emit to request a skip, listen to know someone has made a request</li>
+                <li><code>skip</code> - Emitted from server to skip the current song</li>
+                <li><code>user joined</code> - Emitted when a user joins the current room</li>
+                <li><code>user left</code> - Emitted when a user leaves the current room</li>
+            </ul>
+
+            <h3>Events: Explained</h3>
+
+            <footer class="center-align">
+                <p>&copy;2019 Diamond Grid Software</p>
+            </footer>
+        </main>
+    </body>
+    
+</html>
