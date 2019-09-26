@@ -9,24 +9,31 @@
     "lt": "lt --port 8787",
     "domain": "npm-run-all start lt"
   },
-  "author": "",
+  "author": "Autumn Rivers",
   "license": "MIT",
+  "repository": {
+    "url": "https://www.github.com/diamondgrid/spark-backend.git"
+  },
   "dependencies": {
     "@sendgrid/mail": "^6.4.0",
     "bcrypt": "^3.0.6",
     "body-parser": "^1.19.0",
+    "dropbox-stream": "^3.1.1",
     "express": "^4.16.4",
     "node-fetch": "^2.6.0",
     "socket.io": "^2.2.0",
+    "soundcloud-searcher": "^0.3.1",
     "sqlite": "^3.0.3",
     "uuid": "^3.3.2",
-    "uuid-apikey": "^1.4.3"
+    "uuid-apikey": "^1.4.3",
+    "ytdl-core": "^0.29.7"
   },
   "devDependencies": {
+    "analytics-node": "^3.4.0-beta.1",
     "mkdirp": "^0.5.1"
   },
   "optionalDependencies": {
-    "npm-run-all": "^4.1.5",
-    "localtunnel": "^1.9.1"
+    "localtunnel": "^1.9.1",
+    "npm-run-all": "^4.1.5"
   }
 }

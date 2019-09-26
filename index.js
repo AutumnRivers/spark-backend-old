@@ -50,7 +50,7 @@ const uuidKey = require('uuid-apikey');
 // Mailing
 const fs = require('fs');
 const sendGrid = require('@sendgrid/mail');
-sendGrid.setApiKey(process.env.SENGRID_PASSWORD);
+sendGrid.setApiKey(process.env.SENDGRID_PASSWORD);
 
 // Backend
 app.post('/signup', (req, res, next) => {
@@ -77,7 +77,7 @@ app.post('/signup', (req, res, next) => {
                 const salt = bcrypt.genSaltSync(10);
                 const password = bcrypt.hashSync(req.body.password, salt);
                 // Add the user
-                sql.run('INSERT INTO users (username, password, email, avatar, verifyId, verified, apiKey, public) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [req.body.username, password, req.body.email, 'https://cdn.glitch.com/e37e70e9-8f05-473e-a44e-4e72d168cd47%2Flogo.png', uuid, 'false', apiKey.apiKey, 'true'])
+                sql.run('INSERT INTO users (username, password, email, avatar, verifyId, verified, apiKey, public, usesAuthy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [req.body.username, password, req.body.email, 'https://cdn.glitch.com/e37e70e9-8f05-473e-a44e-4e72d168cd47%2Flogo.png', uuid, 'false', apiKey.apiKey, 'true', 0])
                 .catch(err => {
                     // Our code monkeys are wowking VEWY HAWD to fix this uwu
                     console.error(err);
@@ -229,28 +229,13 @@ io.on('connection', (socket) => {
 
         socket.on('add to queue', (url, service, apiKey, details) => {
             // This triggers when someone adds a song to the queue
-            if(!url || !service || !apiKey) return;
-            // Why queue nothing? "details" is optional, so we don't need to check for it.
+            if(!details || !service || !apiKey || service.startsWith('direct') && !url) return;
+            // Why queue nothing?
             sql.get('SELECT * FROM users WHERE apiKey = $key', [$key=apiKey])
             .then(user => {
                 if(!user) return;
 
-                const roomFolderExists = fs.existsSync('./audio/' + roomName);
-
-                if(!roomFolderExists) mkdir('./audio/' + roomName, (err) => {
-                    console.error(err);
-                });
-
-                const fileStream = fs.createWriteStream('./audio/' + roomName + '/song.mp3');
-
-                fetch(url).then(response => {
-                    const downloadFile = response.body.pipe(fileStream);
-
-                    downloadFile.on('finish', () => {
-                        const username = user.username;
-                        io.to(roomName).emit('queue song', {url: 'localhost:8787/audio/' + roomName + '/song.mp3', name: username, service: service, info: details});
-                    });
-                });
+                if(service == 'soundcloud') fetchSoundCloudURL(details, roomName, user);
 
                 /*const username = user.username;
                 io.to(roomName).emit('queue song', {url: url, name: username, serivce: service, info: details});*/
@@ -324,3 +309,94 @@ http.listen(8787, () => {
     console.log("Spark's backend up on port 8787."); // Actually start up the backend
     console.log("localhost:8787");
 });
+
+function fetchFromYouTube(query, roomName, user) {
+    const yt = require('ytdl-core');
+}
+
+function fetchSoundCloudURL(query, roomName, user) {
+    const sc = require('soundcloud-searcher');
+
+    sc.search({
+        name: query,
+        genres: [],
+        limit: 5,
+        tags: []
+    })
+    .then(res => {
+        var res = JSON.parse(res)[0];
+        const songURL = res.permalink_url;
+        if(!res.streamable) {
+            vex.dialog.alert('This song is not streamable. Please try a different song.');
+            return;
+        } else {
+            fetch('https://api-v2.soundcloud.com/resolve?client_id=' + scId + '&url=' + songURL)
+            .then(origRes => origRes.json())
+            .then(fetchRes => {
+                console.log(fetchRes);
+                const streamURL = fetchRes.media.transcodings[1].url + '?client_id=' + scId;
+                fetch(streamURL)
+                .then(finalOrig => finalOrig.json())
+                .then(finalURL => {
+                    const song = {
+                        title: res.title,
+                        url: songURL,
+                        stream: finalURL.url,
+                        author: {
+                            name: res.user.username,
+                            url: res.user.permalink_url
+                        },
+                        albumArt: res.artwork_url,
+                        duration: res.duration
+                    }
+                    queueSoundCloud(song);
+                });
+            });
+        }
+    })
+    .catch(err => {
+        console.error(err);
+    })
+
+    function queueSoundCloud(song) {
+        const roomFolderExists = fs.existsSync('./audio/' + roomName);
+
+        if(!roomFolderExists) mkdir('./audio/' + roomName, (err) => {
+            console.error(err);
+        });
+
+        const fileStream = fs.createWriteStream('./audio/' + roomName + '/song.mp3');
+
+        fetch(song.stream).then(response => {
+            const downloadFile = response.body.pipe(fileStream);
+
+            downloadFile.on('finish', () => {
+                const username = user.username;
+                io.to(roomName).emit('queue song', {url: 'localhost:8787/audio/' + roomName + '/song.mp3', name: username, service: service, info: song});
+            });
+        });
+    }
+}
+
+function playDirectFile(roomName, url, user) {
+    const roomFolderExists = fs.existsSync('./audio/' + roomName);
+
+    if(!roomFolderExists) mkdir('./audio/' + roomName, (err) => {
+        console.error(err);
+    });
+
+    const fileStream = fs.createWriteStream('./audio/' + roomName + '/song.mp3');
+
+    fetch(url).then(response => {
+        const downloadFile = response.body.pipe(fileStream);
+
+        downloadFile.on('finish', () => {
+            const username = user.username;
+            io.to(roomName).emit('queue song', {url: 'localhost:8787/audio/' + roomName + '/song.mp3', name: username, service: service, info: details});
+        });
+    });
+}
+
+function playDropbox(roomName, url, user) {
+    const dropbox = require('dropbox-stream');
+}
