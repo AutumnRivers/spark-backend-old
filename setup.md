@@ -67,8 +67,8 @@ I do **not** recommend hosting on Glitch, since they enforce a rate limit of 400
 ## Contact
 If you have any further questions, you may contact me at:
 * My [business email](mailto:smarti3plays@gmail.com)
-* My Discord: `Nati#5434`
-* My [Twitter](https://www.twitter.com/SmartiePlays_)
+* My Discord: `Autumn#5434`
+* My [Twitter](https://www.twitter.com/NatiRivers)
 
 ---
 

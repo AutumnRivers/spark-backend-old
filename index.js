@@ -5,7 +5,7 @@ The server runs on the Express.js web server framework, v4.16.4
 
 This code is licensed the MIT OSS License: https://opensource.org/licenses/MIT
 
-©2019 Diamond Grid Web, Nati R (SmartieCodes)
+©2019 Diamond Grid Web, Autumn Rivers (SmartieCodes)
 */
 
 Object.size = function(obj) {
@@ -75,17 +75,23 @@ app.post('/signup', (req, res, next) => {
             } else {
                 // Hash the password with bcrypt
                 const salt = bcrypt.genSaltSync(10);
-                const password = bcrypt.hashSync(req.body.password, salt);
+                var password;
+                !req.body.bcryptUsed ? password = bcrypt.hashSync(req.body.password, salt) : password = req.body.password;
                 // Add the user
-                sql.run('INSERT INTO users (username, password, email, avatar, verifyId, verified, apiKey, public, usesAuthy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [req.body.username, password, req.body.email, 'https://cdn.glitch.com/e37e70e9-8f05-473e-a44e-4e72d168cd47%2Flogo.png', uuid, 'false', apiKey.apiKey, 'true', 0])
+                sql.run('INSERT INTO users (username, password, email, avatar, verifyId, verified, apiKey, public, usesAuthy, privSettings) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [req.body.username, password, req.body.email, 'https://cdn.glitch.com/e37e70e9-8f05-473e-a44e-4e72d168cd47%2Flogo.png', uuid, 'false', apiKey.apiKey, 'true', 0, JSON.stringify(req.body.privacy)])
                 .catch(err => {
                     // Our code monkeys are wowking VEWY HAWD to fix this uwu
                     console.error(err);
                 })
                 .then(() => {
+                    const user = {
+                        username: username,
+                        email: req.body.email,
+                        privacySettings: req.body.privacy
+                    }
                     // Send a 200 status, confirming the signup went through
                     res.status(200);
-                    res.send('Success');
+                    res.send(JSON.stringify(user));
 
                     // Send the verification email.
                     // SendGrid is used here, please look at setup.md to learn how to set this up.
@@ -104,7 +110,7 @@ app.post('/signup', (req, res, next) => {
 
 app.post('/login', (req, res, next) => {
     // No, not pizza logs. But those do sound good, wanna get some? I'm buying.
-    if(!req.body.username && !req.body.email || !req.body.password) {
+    if(!req.body.username && !req.body.email && !req.body.password) {
         // blank. no.
         res.status(400);
         res.send('Missing Credentials');
@@ -327,7 +333,8 @@ function fetchSoundCloudURL(query, roomName, user) {
         var res = JSON.parse(res)[0];
         const songURL = res.permalink_url;
         if(!res.streamable) {
-            vex.dialog.alert('This song is not streamable. Please try a different song.');
+            // Song is not streamable.
+            io.to(roomName).emit('error', { code: 'sc1' });
             return;
         } else {
             fetch('https://api-v2.soundcloud.com/resolve?client_id=' + scId + '&url=' + songURL)
