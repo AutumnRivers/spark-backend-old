@@ -5,3 +5,10 @@ This code is licensed the MIT OSS License: https://opensource.org/licenses/MIT
 
 ©2019 Diamond Grid Web, Autumn Rivers (SmartieCodes)
 */
+
+const StreamSkip = require('stream-skip');
+
+module.exports.cutFile((audioStream, bytesToSkip) => {
+    const cutStream = new StreamSkip();
+    return cutStream;
+})

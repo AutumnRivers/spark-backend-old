@@ -24,6 +24,7 @@
     "socket.io": "^2.2.0",
     "soundcloud-searcher": "^0.3.1",
     "sqlite": "^3.0.3",
+    "stream-skip": "^1.0.3",
     "uuid": "^3.3.2",
     "uuid-apikey": "^1.4.3",
     "ytdl-core": "^0.29.7"

@@ -52,6 +52,11 @@ const fs = require('fs');
 const sendGrid = require('@sendgrid/mail');
 sendGrid.setApiKey(process.env.SENDGRID_PASSWORD);
 
+// Constants
+const prodApiURL = 'https://api.sparkapp.tk';
+const devApiURL = 'http://localhost:8787';
+const prodDownloadURL = 'https://github.com/diamondgrid/spark-desktop/releases';
+
 // Backend
 app.post('/signup', (req, res, next) => {
     // What's handled here? Take a guess.
@@ -70,6 +75,7 @@ app.post('/signup', (req, res, next) => {
             if(user) {
                 // Usernames and Emails are unique. Dopplegangers not allowed! No twins either!!
                 res.status(400);
+                res.set('Content-Type', 'text/plain');
                 res.send('User/Email already exists');
                 return;
             } else {
@@ -99,8 +105,8 @@ app.post('/signup', (req, res, next) => {
                         from: 'noreply@diamondgrid.ga',
                         to: req.body.email,
                         subject: 'Spark E-mail Confirmation',
-                        text: 'Hi there! Somebody (assuming you) has used your email to signup for Spark by Diamond Grid Software. If this was you, great! Confirm your email by going to https://sparkapp-backend.herokuapp.com/verify/' + uuid + ' . If this wasn\'t you, fret not! You can request a take down by going to https://sparkapp-backend.herokuapp.com/deverify/' + uuid + ' , and then the email will automatically be deleted.',
-                        html: `<!DOCTYPE html><html lang="en-us"> <head> <title>Spark - Confirm Email!</title> <link rel="stylesheet" type="text/css" href="./www/css/default.css"/> <link rel="icon" href="./www/icon.ico" type="x-image/icon"/> <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js" type="text/javascript"></script> <meta charset="utf8"/> </head> <body> <main> <h1 class="center-align">Hi there!</h1> <p>Somebody (assuming you) has used your email to signup for Spark by Diamond Grid Software. If this was you, great! <a href="https://sparkapp-backend.herokuapp.com/verify/` + uuid + `">Please verify your email.</a></p> <p>If this wasn't you, fret not! <a href="https://sparkapp-backend.herokuapp.com/deverify/` + uuid + `">You can request a takedown</a>, then the email will be automatically deleted.</p> <footer class="center-align"> <p>&copy;2019 Diamond Grid Software</p> </footer> </main> </body> </html>`
+                        text: 'Hi there! Somebody (assuming you) has used your email to signup for Spark by Diamond Grid Software. If this was you, great! Confirm your email by going to https://api.sparkapp.tk/verify/' + uuid + ' . If this wasn\'t you, fret not! You can request a take down by going to https://api.sparkapp.tk/deverify/' + uuid + ' , and then the email will automatically be deleted.',
+                        html: `<!DOCTYPE html><html lang="en-us"> <head> <title>Spark - Confirm Email!</title> <style>body{margin:0;padding:0;background-color:#363636;font-family:Hind,Arial,Helvetica,sans-serif}main{padding:1px 10px;color:#fff;background-color:#363636;}a{text-decoration:none;color:#ffff9b}a:hover:not(lia:hover){text-decoration:underline}button,input[type=button],input[type=submit]{background:#1d1d1d;color:#fff;padding:10px;margin:10px 5px 3px;border:1px solid transparent;border-radius:10px}button:hover,input[type=button]:hover,input[type=submit]:hover{background:#131313;cursor:pointer}footer{font-style:italic}code,pre{background:rgba(0,0,0,.6);padding:2px 6px}.full{background:rgba(0,0,0,.6);padding:10px;font-family:'Courier New',Courier,monospace}</style> <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js" type="text/javascript"></script> <meta charset="utf8"/> </head> <body> <main> <h1 class="center-align">Hi there!</h1> <p>Somebody (assuming you) has used your email to signup for Spark by Diamond Grid Software. If this was you, great! <a href="https://api.sparkapp.tk/verify/` + uuid + `">Please verify your email.</a></p> <p>If this wasn't you, fret not! <a href="https://api.sparkapp.tk/deverify/` + uuid + `">You can request a takedown</a>, then the email will be automatically deleted.</p> <footer class="center-align"> <p>&copy;2019 Diamond Grid Software</p> </footer> </main> </body> </html>`
                     });
                 });
             }
@@ -108,10 +114,10 @@ app.post('/signup', (req, res, next) => {
     }
 });
 
+// TODO: Handle multi-factor auth
 app.post('/login', (req, res, next) => {
     // No, not pizza logs. But those do sound good, wanna get some? I'm buying.
     if(!req.body.username && !req.body.email && !req.body.password) {
-        // blank. no.
         res.status(400);
         res.send('Missing Credentials');
     } else {
@@ -130,6 +136,7 @@ app.post('/login', (req, res, next) => {
                 } else {
                     // Send a 200 status along with the user's info
                     res.status(200);
+                    res.set('Content-Type', 'application/json');
                     res.send(user);
                 }
             }
@@ -248,6 +255,17 @@ io.on('connection', (socket) => {
             })
         });
 
+        socket.on('request stream', (apiKey) => {
+            io.to(roomName).emit('send host details', { req: 'stream' })
+        });
+
+        socket.on('host details', (apiKey) => {
+            const audioMod = require('./modules/livestream_audio');
+            const fullStream = fs.readSync('./audio/' + roomName + '/song.mp3');
+            const audioStream = audioMod.cutFile(fullStream);
+            io.to(socket).emit('stream received', { stream: audioStream });
+        });
+
         socket.on('skip request', (apiKey) => {
             if(reqMade === true) return;
             skipReqs += 1;
@@ -317,11 +335,51 @@ http.listen(8787, () => {
 });
 
 function fetchFromYouTube(query, roomName, user) {
-    const yt = require('ytdl-core');
+    const youtube = require('ytdl-core');
+    const yts = youtube(query);
+    const service = 'youtube';
+    const service_alt = 'youtube_music'; // Reserved for future use
+
+    const vidId = './audio/' + roomName + '/song.mp3'
+
+    yts.addListener('info', (video) => {
+        const song = {
+            title: video.title,
+            url: video.video_url,
+            author: {
+                name: video.author.name,
+                url: video.author.channel_url
+            },
+            albumArt: video.thumbnail_url,
+            duration: video.length_seconds * 1000
+        }
+
+        queueYouTube(song);
+    })
+
+    yts.addListener('progress', (chunk, dl, total) => {
+        // TODO: Actually do something with this
+        // Maybe use it to signify if the file should be skipped if its incomplete when queued?
+    });
+
+    function queueYouTube(song) {
+        yts.pipe(fs.createWriteStream(vidId));
+
+        yts.addListener('error', (err) => {
+            console.error('YTDL Error: ' + err);
+            io.to(roomName).emit('youtube error', err);
+        });
+
+        const username = user.username;
+        io.to(roomName).emit('queue song', {url: process.env.NODE_ENV == 'dev' ? devApiURL + 'audio/' + roomName + '/song.mp3' : prodApiURL + 'audio/' + roomName + '/song.mp3', name: username, service: service, info: song});
+    }
+
+    return;
 }
 
 function fetchSoundCloudURL(query, roomName, user) {
     const sc = require('soundcloud-searcher');
+    const service = 'soundcloud';
 
     sc.search({
         name: query,
@@ -379,7 +437,7 @@ function fetchSoundCloudURL(query, roomName, user) {
 
             downloadFile.on('finish', () => {
                 const username = user.username;
-                io.to(roomName).emit('queue song', {url: 'localhost:8787/audio/' + roomName + '/song.mp3', name: username, service: service, info: song});
+                io.to(roomName).emit('queue song', {url: process.env.NODE_ENV == 'dev' ? `${devApiURL}/audio/${roomName}/song.mp3` : `${prodApiURL}/audio/${roomName}/song.mp3`, name: username, service: service, info: song});
             });
         });
     }
@@ -399,7 +457,7 @@ function playDirectFile(roomName, url, user) {
 
         downloadFile.on('finish', () => {
             const username = user.username;
-            io.to(roomName).emit('queue song', {url: 'localhost:8787/audio/' + roomName + '/song.mp3', name: username, service: service, info: details});
+            io.to(roomName).emit('queue song', {url: process.env.NODE_ENV == 'dev' ? `${devApiURL}/audio/${roomName}/song.mp3` : `${prodApiURL}/audio/${roomName}/song.mp3`, name: username, service: service, info: details});
         });
     });
 }
